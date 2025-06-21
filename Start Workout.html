@@ -1,0 +1,694 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Workout | Fitness Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .pulse-animation {
+            animation: pulse 1.5s infinite;
+        }
+        .exercise-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .active-exercise {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .rest-timer-active {
+            background-color: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header with workout controls -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Start Workout</h1>
+                <p class="text-gray-600">Build your perfect training session</p>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <div id="timer-container" class="flex items-center gap-3">
+                    <div id="timer-display" class="bg-white px-4 py-2 rounded-full shadow-md flex items-center cursor-pointer">
+                        <i class="fas fa-stopwatch mr-2 text-gray-600"></i>
+                        <span id="timer" class="font-mono">00:00:00</span>
+                    </div>
+                    <button id="rest-timer-btn" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-800 p-2 rounded-full">
+                        <i class="fas fa-clock"></i>
+                    </button>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button id="start-workout" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium transition-all flex items-center gap-2">
+                        <i class="fas fa-play"></i> Start
+                    </button>
+                    <button id="finish-workout" class="hidden bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-medium transition-all flex items-center gap-2">
+                        <i class="fas fa-stop"></i> Finish
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Exercise Selection Panel -->
+            <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-1 h-fit sticky top-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Exercises</h2>
+                    <div class="relative">
+                        <input type="text" placeholder="Search..." class="pl-8 pr-4 py-2 border border-gray-300 rounded-full text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="flex flex-wrap gap-2">
+                        <button class="category-btn bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm" data-category="all">All</button>
+                        <button class="category-btn bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm" data-category="chest">Chest</button>
+                        <button class="category-btn bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm" data-category="back">Back</button>
+                        <button class="category-btn bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm" data-category="legs">Legs</button>
+                        <button class="category-btn bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm" data-category="arms">Arms</button>
+                        <button class="category-btn bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm" data-category="shoulders">Shoulders</button>
+                        <button class="category-btn bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm" data-category="core">Core</button>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
+                    <!-- Exercise items will be populated by JavaScript -->
+                    <div id="exercises-container"></div>
+                </div>
+            </div>
+            
+            <!-- Workout Builder -->
+            <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Your Workout Plan</h2>
+                    <button id="clear-workout" class="text-red-500 hover:text-red-700 text-sm font-medium flex items-center gap-1">
+                        <i class="fas fa-trash-alt"></i> Clear All
+                    </button>
+                </div>
+                
+                <div id="workout-builder" class="space-y-4">
+                    <!-- Empty state -->
+                    <div id="empty-workout" class="text-center py-12">
+                        <i class="fas fa-dumbbell text-4xl text-gray-300 mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-500">Your workout is empty</h3>
+                        <p class="text-gray-400">Add exercises to get started</p>
+                    </div>
+                    
+                    <!-- Workout exercises will be added here dynamically -->
+                    <div id="workout-exercises"></div>
+                </div>
+                
+                <!-- Workout Summary (shown after workout completion) -->
+                <div id="workout-summary" class="mt-8 hidden">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold text-green-800">Workout Completed!</h3>
+                            <span id="workout-duration" class="text-sm text-green-600 font-medium"></span>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-4 text-center mb-6">
+                            <div class="bg-white p-3 rounded-lg shadow-sm">
+                                <p class="text-sm text-green-600">Exercises</p>
+                                <p id="total-exercises" class="text-2xl font-bold text-green-800">0</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg shadow-sm">
+                                <p class="text-sm text-green-600">Sets</p>
+                                <p id="total-sets" class="text-2xl font-bold text-green-800">0</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg shadow-sm">
+                                <p class="text-sm text-green-600">Volume</p>
+                                <p id="total-volume" class="text-2xl font-bold text-green-800">0 kg</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-3">
+                            <button id="save-workout" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2">
+                                <i class="fas fa-save"></i> Save Workout
+                            </button>
+                            <button id="new-workout" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2">
+                                <i class="fas fa-plus"></i> New Workout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rest Timer Modal -->
+    <div id="rest-timer-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm">
+            <div class="text-center">
+                <h3 class="text-xl font-semibold mb-2">Rest Timer</h3>
+                <div class="text-5xl font-mono mb-6" id="rest-timer-display">01:30</div>
+                <div class="flex justify-center gap-4">
+                    <button id="skip-rest" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-full font-medium">
+                        Skip
+                    </button>
+                    <button id="add-30-sec" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-6 py-2 rounded-full font-medium">
+                        +30 sec
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const exercisesContainer = document.getElementById('exercises-container');
+        const workoutExercises = document.getElementById('workout-exercises');
+        const emptyWorkout = document.getElementById('empty-workout');
+        const startWorkoutBtn = document.getElementById('start-workout');
+        const finishWorkoutBtn = document.getElementById('finish-workout');
+        const clearWorkoutBtn = document.getElementById('clear-workout');
+        const timerDisplay = document.getElementById('timer-display');
+        const timerElement = document.getElementById('timer');
+        const restTimerBtn = document.getElementById('rest-timer-btn');
+        const restTimerModal = document.getElementById('rest-timer-modal');
+        const restTimerDisplay = document.getElementById('rest-timer-display');
+        const skipRestBtn = document.getElementById('skip-rest');
+        const add30SecBtn = document.getElementById('add-30-sec');
+        const workoutSummary = document.getElementById('workout-summary');
+        const saveWorkoutBtn = document.getElementById('save-workout');
+        const newWorkoutBtn = document.getElementById('new-workout');
+        const totalExercises = document.getElementById('total-exercises');
+        const totalSets = document.getElementById('total-sets');
+        const totalVolume = document.getElementById('total-volume');
+        const workoutDuration = document.getElementById('workout-duration');
+        const categoryBtns = document.querySelectorAll('.category-btn');
+
+        // Sample Exercise Data
+        const exerciseData = [
+            { name: "Bench Press", category: "chest", muscle: "Pectorals", equipment: "Barbell" },
+            { name: "Squat", category: "legs", muscle: "Quadriceps", equipment: "Barbell" },
+            { name: "Deadlift", category: "back", muscle: "Hamstrings", equipment: "Barbell" },
+            { name: "Overhead Press", category: "shoulders", muscle: "Deltoids", equipment: "Barbell" },
+            { name: "Pull-up", category: "back", muscle: "Lats", equipment: "Bodyweight" },
+            { name: "Barbell Row", category: "back", muscle: "Middle Back", equipment: "Barbell" },
+            { name: "Dumbbell Curl", category: "arms", muscle: "Biceps", equipment: "Dumbbell" },
+            { name: "Triceps Dip", category: "arms", muscle: "Triceps", equipment: "Bodyweight" },
+            { name: "Leg Press", category: "legs", muscle: "Quadriceps", equipment: "Machine" },
+            { name: "Lat Pulldown", category: "back", muscle: "Lats", equipment: "Machine" },
+            { name: "Incline Dumbbell Press", category: "chest", muscle: "Pectorals", equipment: "Dumbbell" },
+            { name: "Leg Curl", category: "legs", muscle: "Hamstrings", equipment: "Machine" },
+            { name: "Cable Fly", category: "chest", muscle: "Pectorals", equipment: "Cable" },
+            { name: "Plank", category: "core", muscle: "Abs", equipment: "Bodyweight" },
+            { name: "Russian Twist", category: "core", muscle: "Obliques", equipment: "Bodyweight" }
+        ];
+
+        // State
+        let workout = [];
+        let timerInterval;
+        let seconds = 0;
+        let isWorkoutActive = false;
+        let restTimerInterval;
+        let restSeconds = 90;
+        let currentExerciseIndex = 0;
+        let currentSetIndex = 0;
+        let activeCategory = "all";
+
+        // Initialize
+        renderExercises();
+        updateEmptyState();
+
+        // Event Listeners
+        startWorkoutBtn.addEventListener('click', startWorkout);
+        finishWorkoutBtn.addEventListener('click', finishWorkout);
+        clearWorkoutBtn.addEventListener('click', clearWorkout);
+        timerDisplay.addEventListener('click', toggleTimer);
+        restTimerBtn.addEventListener('click', showRestTimer);
+        skipRestBtn.addEventListener('click', skipRest);
+        add30SecBtn.addEventListener('click', add30Seconds);
+        saveWorkoutBtn.addEventListener('click', saveWorkout);
+        newWorkoutBtn.addEventListener('click', newWorkout);
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', () => filterExercises(btn.dataset.category));
+        });
+
+        // Functions
+        function renderExercises() {
+            exercisesContainer.innerHTML = '';
+            exerciseData.forEach(exercise => {
+                const exerciseElement = document.createElement('div');
+                exerciseElement.className = 'exercise-card bg-white border border-gray-200 rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg';
+                exerciseElement.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-medium text-gray-800">${exercise.name}</h3>
+                            <div class="flex gap-2 mt-1">
+                                <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full capitalize">${exercise.category}</span>
+                                <span class="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded-full">${exercise.equipment}</span>
+                            </div>
+                        </div>
+                        <button class="add-exercise-btn text-blue-500 hover:text-blue-700 p-1" data-name="${exercise.name}" data-category="${exercise.category}">
+                            <i class="fas fa-plus-circle text-xl"></i>
+                        </button>
+                    </div>
+                `;
+                exercisesContainer.appendChild(exerciseElement);
+            });
+
+            // Add event listeners to all add buttons
+            document.querySelectorAll('.add-exercise-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    addExercise(btn.dataset.name, btn.dataset.category);
+                });
+            });
+        }
+
+        function filterExercises(category) {
+            activeCategory = category;
+            
+            // Update active button
+            categoryBtns.forEach(btn => {
+                if (btn.dataset.category === category) {
+                    btn.classList.remove('bg-gray-100', 'text-gray-800');
+                    btn.classList.add('bg-blue-100', 'text-blue-800');
+                } else {
+                    btn.classList.remove('bg-blue-100', 'text-blue-800');
+                    btn.classList.add('bg-gray-100', 'text-gray-800');
+                }
+            });
+            
+            // Filter exercises
+            if (category === 'all') {
+                document.querySelectorAll('.exercise-card').forEach(card => {
+                    card.classList.remove('hidden');
+                });
+            } else {
+                document.querySelectorAll('.exercise-card').forEach(card => {
+                    const exerciseCategory = card.querySelector('.add-exercise-btn').dataset.category;
+                    if (exerciseCategory === category) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+            }
+        }
+
+        function addExercise(name, category) {
+            // Hide empty state if it's the first exercise
+            if (workout.length === 0) {
+                emptyWorkout.classList.add('hidden');
+            }
+            
+            // Check if exercise already exists in workout
+            const existingExercise = workout.find(ex => ex.name === name);
+            if (existingExercise) {
+                // Just focus on the existing exercise
+                const exerciseElement = document.getElementById(`workout-exercise-${workout.indexOf(existingExercise)}`);
+                exerciseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                exerciseElement.classList.add('active-exercise');
+                setTimeout(() => {
+                    exerciseElement.classList.remove('active-exercise');
+                }, 1500);
+                return;
+            }
+            
+            // Create new exercise in workout
+            const exercise = {
+                id: Date.now(),
+                name,
+                category,
+                sets: [
+                    { weight: '', reps: '', completed: false }
+                ],
+                notes: ''
+            };
+            
+            workout.push(exercise);
+            renderWorkoutExercise(exercise, workout.length - 1);
+            
+            // Scroll to the new exercise
+            const exerciseElement = document.getElementById(`workout-exercise-${workout.length - 1}`);
+            exerciseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function renderWorkoutExercise(exercise, index) {
+            const exerciseElement = document.createElement('div');
+            exerciseElement.id = `workout-exercise-${index}`;
+            exerciseElement.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+            exerciseElement.innerHTML = `
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="font-medium text-gray-800">${exercise.name}</h3>
+                        <p class="text-sm text-gray-500 capitalize">${exercise.category}</p>
+                    </div>
+                    <button class="remove-exercise-btn text-gray-400 hover:text-red-500" data-index="${index}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-3 mb-3">
+                    ${exercise.sets.map((set, setIndex) => `
+                        <div class="set-item grid grid-cols-12 gap-2 items-center ${set.completed ? 'opacity-70' : ''}">
+                            <div class="col-span-1 text-center text-sm font-medium text-gray-500">${setIndex + 1}</div>
+                            <div class="col-span-4">
+                                <input type="number" placeholder="Weight" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                                    value="${set.weight || ''}" 
+                                    data-exercise-index="${index}" data-set-index="${setIndex}" data-field="weight">
+                            </div>
+                            <div class="col-span-2 text-center text-sm text-gray-500">kg</div>
+                            <div class="col-span-3">
+                                <input type="number" placeholder="Reps" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                                    value="${set.reps || ''}" 
+                                    data-exercise-index="${index}" data-set-index="${setIndex}" data-field="reps">
+                            </div>
+                            <div class="col-span-2 flex justify-end">
+                                <button class="complete-set-btn p-2 rounded-full ${set.completed ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}" 
+                                    data-exercise-index="${index}" data-set-index="${setIndex}">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="mb-3">
+                    <textarea placeholder="Notes..." 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm" 
+                        data-exercise-index="${index}">${exercise.notes || ''}</textarea>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                    <button class="add-set-btn text-blue-500 hover:text-blue-700 text-sm font-medium flex items-center gap-1" data-exercise-index="${index}">
+                        <i class="fas fa-plus-circle"></i> Add Set
+                    </button>
+                    <button class="start-exercise-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium flex items-center gap-1" data-exercise-index="${index}">
+                        <i class="fas fa-play text-xs"></i> Start
+                    </button>
+                </div>
+            `;
+            
+            workoutExercises.appendChild(exerciseElement);
+            
+            // Add event listeners to the new elements
+            document.querySelectorAll(`#workout-exercise-${index} .complete-set-btn`).forEach(btn => {
+                btn.addEventListener('click', () => completeSet(
+                    parseInt(btn.dataset.exerciseIndex), 
+                    parseInt(btn.dataset.setIndex)
+                ));
+            });
+            
+            document.querySelectorAll(`#workout-exercise-${index} input`).forEach(input => {
+                input.addEventListener('change', () => updateSet(
+                    parseInt(input.dataset.exerciseIndex),
+                    parseInt(input.dataset.setIndex),
+                    input.dataset.field,
+                    input.value
+                ));
+            });
+            
+            document.querySelector(`#workout-exercise-${index} textarea`).addEventListener('change', (e) => {
+                updateNotes(parseInt(e.target.dataset.exerciseIndex), e.target.value);
+            });
+            
+            document.querySelector(`#workout-exercise-${index} .add-set-btn`).addEventListener('click', (e) => {
+                addSet(parseInt(e.target.dataset.exerciseIndex));
+            });
+            
+            document.querySelector(`#workout-exercise-${index} .start-exercise-btn`).addEventListener('click', (e) => {
+                startExercise(parseInt(e.target.dataset.exerciseIndex));
+            });
+            
+            document.querySelector(`#workout-exercise-${index} .remove-exercise-btn`).addEventListener('click', (e) => {
+                removeExercise(parseInt(e.target.dataset.index));
+            });
+        }
+
+        function updateEmptyState() {
+            if (workout.length === 0) {
+                emptyWorkout.classList.remove('hidden');
+            } else {
+                emptyWorkout.classList.add('hidden');
+            }
+        }
+
+        function removeExercise(index) {
+            workout.splice(index, 1);
+            workoutExercises.innerHTML = '';
+            workout.forEach((exercise, idx) => renderWorkoutExercise(exercise, idx));
+            updateEmptyState();
+        }
+
+        function addSet(exerciseIndex) {
+            workout[exerciseIndex].sets.push({ weight: '', reps: '', completed: false });
+            workoutExercises.innerHTML = '';
+            workout.forEach((exercise, idx) => renderWorkoutExercise(exercise, idx));
+        }
+
+        function updateSet(exerciseIndex, setIndex, field, value) {
+            workout[exerciseIndex].sets[setIndex][field] = value;
+        }
+
+        function updateNotes(exerciseIndex, notes) {
+            workout[exerciseIndex].notes = notes;
+        }
+
+        function completeSet(exerciseIndex, setIndex) {
+            const set = workout[exerciseIndex].sets[setIndex];
+            set.completed = !set.completed;
+            
+            const completeBtn = document.querySelector(
+                `#workout-exercise-${exerciseIndex} .complete-set-btn[data-set-index="${setIndex}"]`
+            );
+            
+            const setItem = document.querySelector(
+                `#workout-exercise-${exerciseIndex} .set-item:nth-child(${setIndex + 1})`
+            );
+            
+            if (set.completed) {
+                setItem.classList.add('opacity-70');
+                completeBtn.classList.remove('bg-gray-200', 'text-gray-600', 'hover:bg-gray-300');
+                completeBtn.classList.add('bg-green-100', 'text-green-600');
+            } else {
+                setItem.classList.remove('opacity-70');
+                completeBtn.classList.remove('bg-green-100', 'text-green-600');
+                completeBtn.classList.add('bg-gray-200', 'text-gray-600', 'hover:bg-gray-300');
+            }
+        }
+
+        function startWorkout() {
+            if (workout.length === 0) {
+                alert('Please add at least one exercise to start your workout!');
+                return;
+            }
+            
+            isWorkoutActive = true;
+            startWorkoutBtn.classList.add('hidden');
+            finishWorkoutBtn.classList.remove('hidden');
+            restTimerBtn.classList.remove('hidden');
+            startTimer();
+        }
+
+        function startTimer() {
+            seconds = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                seconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            timerElement.textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function toggleTimer() {
+            if (isWorkoutActive) {
+                if (timerDisplay.classList.contains('rest-timer-active')) {
+                    // Pause timer
+                    clearInterval(timerInterval);
+                    timerDisplay.classList.remove('rest-timer-active');
+                    timerDisplay.innerHTML = '<i class="fas fa-stopwatch mr-2"></i><span id="timer" class="font-mono">' + timerElement.textContent + '</span>';
+                } else {
+                    // Resume timer
+                    startTimer();
+                    timerDisplay.classList.add('rest-timer-active');
+                    timerDisplay.innerHTML = '<i class="fas fa-pause mr-2"></i><span id="timer" class="font-mono">' + timerElement.textContent + '</span>';
+                }
+            }
+        }
+
+        function showRestTimer() {
+            if (!isWorkoutActive) return;
+            
+            restSeconds = 90;
+            updateRestTimerDisplay();
+            restTimerModal.classList.remove('hidden');
+            
+            restTimerInterval = setInterval(() => {
+                restSeconds--;
+                updateRestTimerDisplay();
+                
+                if (restSeconds <= 0) {
+                    clearInterval(restTimerInterval);
+                    restTimerModal.classList.add('hidden');
+                }
+            }, 1000);
+        }
+
+        function updateRestTimerDisplay() {
+            const minutes = Math.floor(restSeconds / 60);
+            const secs = restSeconds % 60;
+            restTimerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            // Change color when below 10 seconds
+            if (restSeconds <= 10) {
+                restTimerDisplay.classList.add('text-red-500');
+                restTimerDisplay.classList.add('pulse-animation');
+            } else {
+                restTimerDisplay.classList.remove('text-red-500');
+                restTimerDisplay.classList.remove('pulse-animation');
+            }
+        }
+
+        function skipRest() {
+            clearInterval(restTimerInterval);
+            restTimerModal.classList.add('hidden');
+        }
+
+        function add30Seconds() {
+            restSeconds += 30;
+            updateRestTimerDisplay();
+        }
+
+        function startExercise(index) {
+            if (!isWorkoutActive) {
+                alert('Please start your workout first!');
+                return;
+            }
+            
+            currentExerciseIndex = index;
+            currentSetIndex = 0;
+            
+            // Highlight the current exercise
+            document.querySelectorAll('.exercise-card').forEach(card => {
+                card.classList.remove('active-exercise');
+            });
+            
+            const exerciseElement = document.getElementById(`workout-exercise-${index}`);
+            exerciseElement.classList.add('active-exercise');
+            
+            // Start rest timer for the first set
+            showRestTimer();
+        }
+
+        function finishWorkout() {
+            isWorkoutActive = false;
+            clearInterval(timerInterval);
+            
+            startWorkoutBtn.classList.remove('hidden');
+            finishWorkoutBtn.classList.add('hidden');
+            restTimerBtn.classList.add('hidden');
+            timerDisplay.classList.remove('rest-timer-active');
+            
+            // Show workout summary
+            workoutSummary.classList.remove('hidden');
+            
+            // Calculate workout stats
+            const exerciseCount = workout.length;
+            let setCount = 0;
+            let totalVolume = 0;
+            
+            workout.forEach(exercise => {
+                exercise.sets.forEach(set => {
+                    if (set.completed && set.weight && set.reps) {
+                        setCount++;
+                        totalVolume += parseFloat(set.weight) * parseInt(set.reps);
+                    }
+                });
+            });
+            
+            totalExercises.textContent = exerciseCount;
+            totalSets.textContent = setCount;
+            totalVolume.textContent = totalVolume.toFixed(1) + ' kg';
+            workoutDuration.textContent = 'Duration: ' + timerElement.textContent;
+            
+            // Scroll to summary
+            workoutSummary.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearWorkout() {
+            if (confirm('Are you sure you want to clear your entire workout?')) {
+                workout = [];
+                workoutExercises.innerHTML = '';
+                updateEmptyState();
+                
+                // Reset timer if active
+                if (isWorkoutActive) {
+                    clearInterval(timerInterval);
+                    isWorkoutActive = false;
+                    seconds = 0;
+                    updateTimerDisplay();
+                    startWorkoutBtn.classList.remove('hidden');
+                    finishWorkoutBtn.classList.add('hidden');
+                    restTimerBtn.classList.add('hidden');
+                    timerDisplay.classList.remove('rest-timer-active');
+                }
+                
+                // Hide summary if shown
+                workoutSummary.classList.add('hidden');
+            }
+        }
+
+        function saveWorkout() {
+            // In a real app, this would save to a database
+            alert('Workout saved successfully!');
+            newWorkout();
+        }
+
+        function newWorkout() {
+            workout = [];
+            workoutExercises.innerHTML = '';
+            workoutSummary.classList.add('hidden');
+            updateEmptyState();
+            
+            // Reset timer
+            clearInterval(timerInterval);
+            seconds = 0;
+            updateTimerDisplay();
+            isWorkoutActive = false;
+            startWorkoutBtn.classList.remove('hidden');
+            finishWorkoutBtn.classList.add('hidden');
+            restTimerBtn.classList.add('hidden');
+            timerDisplay.classList.remove('rest-timer-active');
+        }
+    </script>
+</body>
+</html>
